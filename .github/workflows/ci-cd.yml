@@ -74,8 +74,8 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          docker build -t emisor-image .
-          docker tag emisor-image:latest ${{ steps.set_image.outputs.docker_image }}
+          docker build -t receptor-image -f receptor/dockerfile receptor/
+          docker tag receptor-image:latest ${{ steps.set_image.outputs.docker_image }}
           docker push ${{ steps.set_image.outputs.docker_image }}
 
   deploy:
