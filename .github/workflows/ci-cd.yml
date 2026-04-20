@@ -61,14 +61,23 @@ jobs:
           echo "${{ secrets.EC2_KEY }}" > /tmp/ssh_key.pem
           chmod 600 /tmp/ssh_key.pem
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+
       - name: Deploy to EC2
         run: |
           DOCKER_IMAGE="${{ needs.docker.outputs.docker_image }}"
+          ECR_PASSWORD=$(aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }})
+
           ssh -o StrictHostKeyChecking=no -i /tmp/ssh_key.pem \
             ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST_DEV }} << EOF
-            aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} \
-              | docker login --username AWS --password-stdin \
-                ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com
+            echo "$ECR_PASSWORD" | docker login --username AWS --password-stdin \
+              ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com
             docker pull $DOCKER_IMAGE
             docker stop receptor || true
             docker rm receptor || true
