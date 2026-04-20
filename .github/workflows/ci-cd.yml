@@ -83,5 +83,10 @@ jobs:
             docker pull ${DOCKER_IMAGE}
             docker stop receptor || true
             docker rm receptor || true
-            docker run -d --name receptor ${DOCKER_IMAGE}
+            docker run -d --name receptor \
+              -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
+              -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
+              -e AWS_SESSION_TOKEN=${{ secrets.AWS_SESSION_TOKEN }} \
+              -e AWS_DEFAULT_REGION=${AWS_REGION} \
+              ${DOCKER_IMAGE}
           EOF
