@@ -70,7 +70,6 @@ jobs:
           VERSION_TAG="1.0.${{ github.run_number }}-${{ github.sha }}"
           IMAGE="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:$VERSION_TAG"
           echo "docker_image=$IMAGE" >> "$GITHUB_OUTPUT"
-          echo "DOCKER_IMAGE=$IMAGE" >> $GITHUB_ENV
 
       - name: Build and push Docker image
         run: |
@@ -90,19 +89,18 @@ jobs:
       - name: Deploy to EC2
         run: |
           DOCKER_IMAGE="${{ needs.docker.outputs.docker_image }}"
+          LOGIN_COMMAND=$(aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} --access-key-id ${{ secrets.AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.AWS_SECRET_ACCESS_KEY }} --session-token ${{ secrets.AWS_SESSION_TOKEN }})
           ssh -o StrictHostKeyChecking=no -i /tmp/ssh_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST_DEV }} << EOF
-            aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com
-            
+            # Hacer login usando el token obtenido por el runner
+            echo "$LOGIN_COMMAND" | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com
             docker stop receptor-service || true
             docker rm receptor-service || true
-            
-            docker pull \$DOCKER_IMAGE
-            
+            docker pull $DOCKER_IMAGE
             docker run -d \
               --name receptor-service \
               -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
               -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
               -e AWS_SESSION_TOKEN=${{ secrets.AWS_SESSION_TOKEN }} \
               -e AWS_DEFAULT_REGION=${{ secrets.AWS_DEFAULT_REGION }} \
-              \$DOCKER_IMAGE
+              $DOCKER_IMAGE
           EOF
