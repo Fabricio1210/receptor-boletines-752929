@@ -8,6 +8,8 @@ on:
 
 env:
   AWS_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
 
 jobs:
   docker:
@@ -25,11 +27,15 @@ jobs:
           CLEAN_BRANCH=$(echo "$RAW_BRANCH" | sed -E 's:^(feature/|hotfix/|bugfix/|release/)::')
           echo "branch_name=$CLEAN_BRANCH" >> "$GITHUB_OUTPUT"
 
-      - name: Set Docker image name output
+      - name: Set version tag
+        run: |
+          echo "VERSION_TAG=1.0.${{ github.run_number }}-${{ steps.vars.outputs.branch_name }}" >> $GITHUB_ENV
+
+      - name: Set Docker image name
         id: set_image
         run: |
-          VERSION_TAG="1.0.${{ github.run_number }}-${{ steps.vars.outputs.branch_name }}"
           IMAGE="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:$VERSION_TAG"
+          echo "DOCKER_IMAGE=$IMAGE" >> $GITHUB_ENV
           echo "docker_image=$IMAGE" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
@@ -48,8 +54,8 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          DOCKER_IMAGE="${{ steps.set_image.outputs.docker_image }}"
-          docker build -t $DOCKER_IMAGE ./receptor
+          docker build -t receptor-image ./receptor
+          docker tag receptor-image:latest $DOCKER_IMAGE
           docker push $DOCKER_IMAGE
 
   deploy:
@@ -72,12 +78,9 @@ jobs:
       - name: Deploy to EC2
         run: |
           DOCKER_IMAGE="${{ needs.docker.outputs.docker_image }}"
-          ECR_PASSWORD=$(aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }})
-
-          ssh -o StrictHostKeyChecking=no -i /tmp/ssh_key.pem \
-            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST_DEV }} << EOF
-            echo "$ECR_PASSWORD" | docker login --username AWS --password-stdin \
-              ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com
+          ECR_LOGIN=$(aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com)
+          ssh -o StrictHostKeyChecking=no -i /tmp/ssh_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST_DEV }} << EOF
+            $(aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }}) | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com
             docker pull $DOCKER_IMAGE
             docker stop receptor || true
             docker rm receptor || true
