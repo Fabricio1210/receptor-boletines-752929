@@ -101,9 +101,12 @@ jobs:
           export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
           export AWS_SESSION_TOKEN=${{ secrets.AWS_SESSION_TOKEN }}
           export AWS_DEFAULT_REGION=${{ secrets.AWS_DEFAULT_REGION }}
+
           aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+          
           docker stop emisor-service || true
           docker rm emisor-service || true
+          
           docker pull $DOCKER_IMAGE
           docker run -d \
             --name emisor-service \
