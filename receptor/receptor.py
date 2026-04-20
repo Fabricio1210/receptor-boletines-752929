@@ -79,4 +79,4 @@ def consumir():
 if __name__ == "__main__":
     print("Servicio receptor listo")
     consumir()
-    #prueba
+    #prueba ssd
