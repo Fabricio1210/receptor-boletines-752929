@@ -84,31 +84,31 @@ jobs:
     steps:
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
+        env:
+          DOCKER_IMAGE: ${{ needs.docker.outputs.docker_image }}
+          AWS_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
         with:
           host: ${{ secrets.EC2_HOST_DEV }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           envs: DOCKER_IMAGE,AWS_REGION,AWS_ACCOUNT_ID
-        env:
-          DOCKER_IMAGE: ${{ needs.docker.outputs.docker_image }}
-          AWS_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-        script: |
-          export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
-          export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          export AWS_SESSION_TOKEN=${{ secrets.AWS_SESSION_TOKEN }}
-          export AWS_DEFAULT_REGION=${{ secrets.AWS_DEFAULT_REGION }}
+          script: |
+            export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+            export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            export AWS_SESSION_TOKEN=${{ secrets.AWS_SESSION_TOKEN }}
+            export AWS_DEFAULT_REGION=${{ secrets.AWS_DEFAULT_REGION }}
 
-          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-          
-          docker stop receptor-service || true
-          docker rm receptor-service || true
-          
-          docker pull $DOCKER_IMAGE
-          docker run -d \
-            --name receptor-service \
-            -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
-            -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-            -e AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN \
-            -e AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION \
-            $DOCKER_IMAGE
+            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+            
+            docker stop receptor-service || true
+            docker rm receptor-service || true
+            
+            docker pull $DOCKER_IMAGE
+            docker run -d \
+              --name receptor-service \
+              -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+              -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+              -e AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN \
+              -e AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION \
+              $DOCKER_IMAGE
