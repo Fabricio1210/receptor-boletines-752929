@@ -78,11 +78,14 @@ jobs:
       - name: Deploy to EC2
         run: |
           DOCKER_IMAGE="${{ needs.docker.outputs.docker_image }}"
-          ECR_LOGIN=$(aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com)
+          ECR_PASSWORD=$(aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }})
+          ACCOUNT_ID="${{ secrets.AWS_ACCOUNT_ID }}"
+          REGION="${{ secrets.AWS_DEFAULT_REGION }}"
+
           ssh -o StrictHostKeyChecking=no -i /tmp/ssh_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST_DEV }} << EOF
-            $(aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }}) | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com
-            docker pull $DOCKER_IMAGE
+            echo "${ECR_PASSWORD}" | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com
+            docker pull ${DOCKER_IMAGE}
             docker stop receptor || true
             docker rm receptor || true
-            docker run -d --name receptor $DOCKER_IMAGE
+            docker run -d --name receptor ${DOCKER_IMAGE}
           EOF
