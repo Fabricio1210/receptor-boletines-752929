@@ -34,7 +34,7 @@ def procesar_mensaje(msg):
             'leido': False
         }
     )
-    URL_MOSTRADOR = f"http://54.209.149.157:8001/boletines/{boletin_id}?correoElectronico={correo}"
+    URL_MOSTRADOR = f"http://13.221.134.70:8001/boletines/{boletin_id}?correoElectronico={correo}"
     mensaje_correo = (
         f"Se ha generado un nuevo boletin.\n\n"
         f"Contenido: {datos.get('mensaje')}\n"
